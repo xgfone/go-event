@@ -28,7 +28,7 @@ func ExampleEventEmitter() {
 	EmitAsync("e2", "emitAsync", "event", "e2").Wait()
 	EmitAsync("e3", "emitAsync", "event", "e3").Wait()
 
-	// Unordered output:
+	// Output:
 	// listener1: [emit event e1]
 	// listener2: [emit event e1]
 	// listener2: [emit event e2]

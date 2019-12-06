@@ -44,7 +44,7 @@ func main() {
     emitter.EmitAsync("e2", "emitAsync", "event", "e2").Wait()
     emitter.EmitAsync("e3", "emitAsync", "event", "e3").Wait()
 
-    // Unordered output:
+    // Output:
     // listener1: [emit event e1]
     // listener2: [emit event e1]
     // listener2: [emit event e2]
@@ -92,7 +92,7 @@ func main() {
     events.EmitAsync("e2", "emitAsync", "event", "e2").Wait()
     events.EmitAsync("e3", "emitAsync", "event", "e3").Wait()
 
-    // Unordered output:
+    // Output:
     // listener1: [emit event e1]
     // listener2: [emit event e1]
     // listener2: [emit event e2]
