@@ -32,10 +32,10 @@ type Listeners []Listener
 func (ls Listeners) Len() int      { return len(ls) }
 func (ls Listeners) Swap(i, j int) { ls[i], ls[j] = ls[j], ls[i] }
 func (ls Listeners) Less(i, j int) bool {
-	if ls[i] == nil {
-		return false
+	if ls[j] == nil {
+		return true
 	}
-	return true
+	return false
 }
 
 // Result is used to represent the result of the asynchronous emitting.
