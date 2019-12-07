@@ -2,7 +2,21 @@ package events
 
 import (
 	"fmt"
+	"sort"
+	"testing"
 )
+
+func TestListeners(t *testing.T) {
+	ln1 := ListenerFunc(func(...interface{}) {})
+	ln2 := ListenerFunc(func(...interface{}) {})
+	ln3 := ListenerFunc(func(...interface{}) {})
+	lns := Listeners{nil, ln1, nil, ln3, nil, ln2, nil}
+	sort.Sort(lns)
+
+	if lns[0] != ln1 || lns[1] != ln3 || lns[2] != ln2 {
+		t.Error(ln1, ln3, ln2, lns[0], lns[1], lns[2])
+	}
+}
 
 func ExampleEventEmitter() {
 	ln1 := ListenerFunc(func(data ...interface{}) { fmt.Println("listener1:", data) })
