@@ -18,11 +18,6 @@ func Once(event string, listeners ...Listener) {
 	DefaultEmitter.Once(event, listeners...)
 }
 
-// RemoveAllListeners is equal to DefaultEmitter.RemoveAllListeners(event).
-func RemoveAllListeners(event string) {
-	DefaultEmitter.RemoveAllListeners(event)
-}
-
 // Emit is equal to DefaultEmitter.Emit(event, data...).
 func Emit(event string, data ...interface{}) {
 	DefaultEmitter.Emit(event, data...)

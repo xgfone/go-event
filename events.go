@@ -81,13 +81,12 @@ type EventEmitter interface {
 	Once(event string, listeners ...Listener)
 
 	// RemoveListener removes the given listeners from the event.
+	//
+	// If no listeners, it will remove the whole event.
 	RemoveListener(event string, listeners ...Listener)
 
 	// Off is the alias of RemoveListener.
 	Off(event string, listeners ...Listener)
-
-	// RemoveAllListeners removes all listeners registered to the specified event.
-	RemoveAllListeners(event string)
 
 	// Clear removes all events and all listeners.
 	Clear()
@@ -289,6 +288,7 @@ func (e *emitter) removeListener(listeners Listeners, listener Listener) int {
 
 func (e *emitter) RemoveListener(evt string, listener ...Listener) {
 	if listener == nil {
+		e.RemoveAllListeners(evt)
 		return
 	}
 
