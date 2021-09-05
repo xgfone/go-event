@@ -1,6 +1,6 @@
-# go-events [![Build Status](https://travis-ci.org/xgfone/go-events.svg?branch=master)](https://travis-ci.org/xgfone/go-events) [![GoDoc](https://godoc.org/github.com/xgfone/go-events?status.svg)](http://godoc.org/github.com/xgfone/go-events) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](https://raw.githubusercontent.com/xgfone/go-events/master/LICENSE)
+# go-events [![Build Status](https://github.com/xgfone/go-events/actions/workflows/go.yml/badge.svg)](https://github.com/xgfone/go-events/actions/workflows/go.yml) [![GoDoc](https://godoc.org/github.com/xgfone/go-events?status.svg)](http://godoc.org/github.com/xgfone/go-events) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](https://raw.githubusercontent.com/xgfone/go-events/master/LICENSE)
 
-A simple event emmiter for Go Programming Language. Inspired by [`Nodejs EventEmitter`](https://nodejs.org/api/events.html).
+A simple event emmiter for Go `1.5+`. Inspired by [`Nodejs EventEmitter`](https://nodejs.org/api/events.html).
 
 ## Installation
 
