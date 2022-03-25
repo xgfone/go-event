@@ -32,9 +32,10 @@ func ExampleEmitter() {
 
 	On("e1", "ln1", ln1)
 	On("e1", "ln2", ln2)
-	On("e2", "ln2", ln2)
+	OnFunc("e2", "ln2", ln2)
 	OnFunc("e2", "ln3", ln3)
 	OnFunc("e3", "ln3", ln3)
+	OnceFunc("e3", "ln1", ln1) // Only trigger once
 
 	events := Events()
 	sort.Strings(events)
@@ -81,6 +82,7 @@ func ExampleEmitter() {
 	// listener=ln2, event=e2, data=[data2]
 	// listener=ln3, event=e2, data=[data2]
 	// listener=ln3, event=e3, data=[data3]
+	// listener=ln1, event=e3, data=[data3]
 	// Events: [e1 e2]
 	// listener=ln2, event=e1, data=[data4]
 	// listener=ln3, event=e2, data=[data5]

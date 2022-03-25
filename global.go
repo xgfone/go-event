@@ -30,19 +30,24 @@ func On(event, listenerName string, listener Listener) {
 	DefaultEmitter.On(event, listenerName, listener)
 }
 
-// OnFunc is equal to DefaultEmitter.OnFunc(event, listenerName, listener).
+// Once is equal to DefaultEmitter.Once(event, listenerName, listener).
+func Once(event, listenerName string, listener Listener) {
+	DefaultEmitter.Once(event, listenerName, listener)
+}
+
+// OnceFunc is equal to DefaultEmitter.Once(event, listenerName, listener).
+func OnceFunc(event, listenerName string, listener Listener) {
+	DefaultEmitter.Once(event, listenerName, listener)
+}
+
+// OnFunc is equal to DefaultEmitter.On(event, listenerName, listener).
 func OnFunc(event, listenerName string, listener ListenerFunc) {
-	DefaultEmitter.OnFunc(event, listenerName, listener)
+	DefaultEmitter.On(event, listenerName, listener)
 }
 
 // Off is equal to DefaultEmitter.Off(event, listenerName).
 func Off(event, listenerName string) {
 	DefaultEmitter.Off(event, listenerName)
-}
-
-// Once is equal to DefaultEmitter.Once(event, listenerName, listener).
-func Once(event, listenerName string, listener Listener) {
-	DefaultEmitter.Once(event, listenerName, listener)
 }
 
 // Emit is equal to DefaultEmitter.Emit(event, data...).

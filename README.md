@@ -33,9 +33,11 @@ func main() {
 
 	event.On("e1", "ln1", ln1)
 	event.On("e1", "ln2", ln2)
-	event.On("e2", "ln2", ln2)
+	event.OnFunc("e2", "ln2", ln2)
 	event.OnFunc("e2", "ln3", ln3)
 	event.OnFunc("e3", "ln3", ln3)
+	event.OnceFunc("e3", "ln1", ln1) // Only trigger once
+
 
 	events := event.Events()
 	sort.Strings(events)
@@ -82,6 +84,7 @@ func main() {
 	// listener=ln2, event=e2, data=[data2]
 	// listener=ln3, event=e2, data=[data2]
 	// listener=ln3, event=e3, data=[data3]
+	// listener=ln1, event=e3, data=[data3]
 	// Events: [e1 e2]
 	// listener=ln2, event=e1, data=[data4]
 	// listener=ln3, event=e2, data=[data5]
