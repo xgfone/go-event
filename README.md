@@ -1,11 +1,11 @@
-# go-events [![Build Status](https://github.com/xgfone/go-events/actions/workflows/go.yml/badge.svg)](https://github.com/xgfone/go-events/actions/workflows/go.yml) [![GoDoc](https://godoc.org/github.com/xgfone/go-events?status.svg)](http://godoc.org/github.com/xgfone/go-events) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](https://raw.githubusercontent.com/xgfone/go-events/master/LICENSE)
+# go-event [![Build Status](https://github.com/xgfone/go-event/actions/workflows/go.yml/badge.svg)](https://github.com/xgfone/go-event/actions/workflows/go.yml) [![GoDoc](https://godoc.org/github.com/xgfone/go-event?status.svg)](http://godoc.org/github.com/xgfone/go-event) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](https://raw.githubusercontent.com/xgfone/go-event/master/LICENSE)
 
-A simple event emmiter for Go `1.5+`. Inspired by [`Nodejs EventEmitter`](https://nodejs.org/api/events.html).
+A simple event emmiter for Go `1.5+`. Inspired by [`Nodejs EventEmitter`](https://nodejs.org/api/event.html).
 
 ## Installation
 
 ```shell
-$ go get -u github.com/xgfone/go-events
+$ go get -u github.com/xgfone/go-event
 ```
 
 ## Example
@@ -14,93 +14,80 @@ $ go get -u github.com/xgfone/go-events
 package main
 
 import (
-    "fmt"
+	"fmt"
+	"sort"
 
-    "github.com/xgfone/go-events"
+	"github.com/xgfone/go-event"
 )
 
 func main() {
-    ln1 := events.ListenerFunc(func(data ...interface{}) { fmt.Println("listener1:", data) })
-    ln2 := events.ListenerFunc(func(data ...interface{}) { fmt.Println("listener2:", data) })
-    ln3 := events.ListenerFunc(func(data ...interface{}) { fmt.Println("listener3:", data) })
+	newListener := func(listenerName string) event.ListenerFunc {
+		return func(event string, data ...interface{}) {
+			fmt.Printf("listener=%s, event=%s, data=%v\n", listenerName, event, data)
+		}
+	}
 
-    emitter := events.New()
-    emitter.On("e1", ln1, ln2)
-    emitter.On("e2", ln2, ln3)
-    emitter.Once("e3", ln3)
+	ln1 := newListener("ln1")
+	ln2 := newListener("ln2")
+	ln3 := newListener("ln3")
 
-    emitter.Emit("e1", "emit", "event", "e1")
-    emitter.Emit("e2", "emit", "event", "e2")
-    emitter.Emit("e3", "emit", "event", "e3")
+	event.On("e1", "ln1", ln1)
+	event.On("e1", "ln2", ln2)
+	event.On("e2", "ln2", ln2)
+	event.OnFunc("e2", "ln3", ln3)
+	event.OnFunc("e3", "ln3", ln3)
 
-    emitter.Off("e1", ln1)
-    emitter.Off("e2", ln2)
+	events := event.Events()
+	sort.Strings(events)
+	fmt.Printf("Events: %v\n", events)
 
-    emitter.Emit("e1", "emit", "event", "e1")
-    emitter.Emit("e2", "emit", "event", "e2")
-    emitter.Emit("e3", "emit", "event", "e3")
+	event.Emit("e1", "data1")
+	event.Emit("e2", "data2")
+	event.Emit("e3", "data3")
 
-    emitter.EmitAsync("e1", "emitAsync", "event", "e1").Wait()
-    emitter.EmitAsync("e2", "emitAsync", "event", "e2").Wait()
-    emitter.EmitAsync("e3", "emitAsync", "event", "e3").Wait()
+	event.Off("e1", "ln1")
+	event.Off("e2", "ln2")
+	event.Off("e3", "ln3")
 
-    // Output:
-    // listener1: [emit event e1]
-    // listener2: [emit event e1]
-    // listener2: [emit event e2]
-    // listener3: [emit event e2]
-    // listener3: [emit event e3]
-    // listener2: [emit event e1]
-    // listener3: [emit event e2]
-    // listener2: [emitAsync event e1]
-    // listener3: [emitAsync event e2]
-}
-```
+	events = event.Events()
+	sort.Strings(events)
+	fmt.Printf("Events: %v\n", events)
 
-There is a default global `EventEmitter` and some method aliases, such as `On`, `Off`, `Once`, `Emit` and `EmitAsync`.
+	event.Emit("e1", "data4")
+	event.Emit("e2", "data5")
+	event.Emit("e3", "data6")
 
-```go
-package main
+	event.EmitAsync("e1", "data7").Wait()
+	event.EmitAsync("e2", "data8").Wait()
+	event.EmitAsync("e3", "data9").Wait()
 
-import (
-    "fmt"
+	// Remove the event "e2" and all its listeners.
+	event.Off("e2", "")
 
-    "github.com/xgfone/go-events"
-)
+	events = event.Events()
+	sort.Strings(events)
+	fmt.Printf("Events: %v\n", events)
 
-func main() {
-    ln1 := events.ListenerFunc(func(data ...interface{}) { fmt.Println("listener1:", data) })
-    ln2 := events.ListenerFunc(func(data ...interface{}) { fmt.Println("listener2:", data) })
-    ln3 := events.ListenerFunc(func(data ...interface{}) { fmt.Println("listener3:", data) })
+	// Remove all the events and their listeners.
+	event.Off("", "")
 
-    events.On("e1", ln1, ln2)
-    events.On("e2", ln2, ln3)
-    events.Once("e3", ln3)
+	events = event.Events()
+	sort.Strings(events)
+	fmt.Printf("Events: %v\n", events)
 
-    events.Emit("e1", "emit", "event", "e1")
-    events.Emit("e2", "emit", "event", "e2")
-    events.Emit("e3", "emit", "event", "e3")
-
-    events.Off("e1", ln1)
-    events.Off("e2", ln2)
-
-    events.Emit("e1", "emit", "event", "e1")
-    events.Emit("e2", "emit", "event", "e2")
-    events.Emit("e3", "emit", "event", "e3")
-
-    events.EmitAsync("e1", "emitAsync", "event", "e1").Wait()
-    events.EmitAsync("e2", "emitAsync", "event", "e2").Wait()
-    events.EmitAsync("e3", "emitAsync", "event", "e3").Wait()
-
-    // Output:
-    // listener1: [emit event e1]
-    // listener2: [emit event e1]
-    // listener2: [emit event e2]
-    // listener3: [emit event e2]
-    // listener3: [emit event e3]
-    // listener2: [emit event e1]
-    // listener3: [emit event e2]
-    // listener2: [emitAsync event e1]
-    // listener3: [emitAsync event e2]
+	// Output:
+	// Events: [e1 e2 e3]
+	// listener=ln1, event=e1, data=[data1]
+	// listener=ln2, event=e1, data=[data1]
+	// listener=ln2, event=e2, data=[data2]
+	// listener=ln3, event=e2, data=[data2]
+	// listener=ln3, event=e3, data=[data3]
+	// Events: [e1 e2]
+	// listener=ln2, event=e1, data=[data4]
+	// listener=ln3, event=e2, data=[data5]
+	// listener=ln2, event=e1, data=[data7]
+	// listener=ln3, event=e2, data=[data8]
+	// Events: [e1]
+	// Events: []
 }
 ```
