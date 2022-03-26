@@ -21,28 +21,28 @@ var DefaultEmitter = New()
 func Events() []string { return DefaultEmitter.Events() }
 
 // Listeners is equal to DefaultEmitter.Listeners.(event).
-func Listeners(event string) map[string]Listener {
+func Listeners(event string) []Listener {
 	return DefaultEmitter.Listeners(event)
 }
 
-// On is equal to DefaultEmitter.On(event, listenerName, listener).
-func On(event, listenerName string, listener Listener) {
-	DefaultEmitter.On(event, listenerName, listener)
+// On is equal to DefaultEmitter.On(event, listener).
+func On(event string, listener Listener) {
+	DefaultEmitter.On(event, listener)
 }
 
-// Once is equal to DefaultEmitter.Once(event, listenerName, listener).
-func Once(event, listenerName string, listener Listener) {
-	DefaultEmitter.Once(event, listenerName, listener)
+// Once is equal to DefaultEmitter.Once(event, listener).
+func Once(event string, listener Listener) {
+	DefaultEmitter.Once(event, listener)
 }
 
-// OnceFunc is equal to DefaultEmitter.Once(event, listenerName, listener).
-func OnceFunc(event, listenerName string, listener Listener) {
-	DefaultEmitter.Once(event, listenerName, listener)
+// OnceFunc is equal to DefaultEmitter.Once(event, NewListener(listenerName, listenerCallback)).
+func OnceFunc(event, listenerName string, listenerCallback Callback) {
+	DefaultEmitter.Once(event, NewListener(listenerName, listenerCallback))
 }
 
-// OnFunc is equal to DefaultEmitter.On(event, listenerName, listener).
-func OnFunc(event, listenerName string, listener ListenerFunc) {
-	DefaultEmitter.On(event, listenerName, listener)
+// OnFunc is equal to DefaultEmitter.On(event, NewListener(listenerName, listenerCallback)).
+func OnFunc(event, listenerName string, listenerCallback Callback) {
+	DefaultEmitter.On(event, NewListener(listenerName, listenerCallback))
 }
 
 // Off is equal to DefaultEmitter.Off(event, listenerName).

@@ -21,21 +21,20 @@ import (
 	"sync/atomic"
 )
 
-type namedListener struct {
-	Name  string
+type indexListener struct {
 	Index uint64
 	Listener
 }
 
-type namedListeners []namedListener
+type indexListeners []indexListener
 
-func (a namedListeners) Len() int           { return len(a) }
-func (a namedListeners) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a namedListeners) Less(i, j int) bool { return a[i].Index < a[j].Index }
+func (a indexListeners) Len() int           { return len(a) }
+func (a indexListeners) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a indexListeners) Less(i, j int) bool { return a[i].Index < a[j].Index }
 
 type eventManager struct {
 	matchEvent func(matchedEvent, emittedEvent string) bool
-	events     map[string]namedListeners
+	events     map[string]indexListeners
 }
 
 func (m eventManager) Events() (events []string) {
@@ -46,11 +45,11 @@ func (m eventManager) Events() (events []string) {
 	return
 }
 
-func (m eventManager) Listeners(event string) (listeners map[string]Listener) {
-	nlisteners := m.events[event]
-	listeners = make(map[string]Listener, len(nlisteners))
-	for i, _len := 0, len(nlisteners); i < _len; i++ {
-		listeners[nlisteners[i].Name] = nlisteners[i].Listener
+func (m eventManager) Listeners(event string) (listeners []Listener) {
+	ilisteners := m.events[event]
+	listeners = make([]Listener, 0, len(ilisteners))
+	for i, _len := 0, len(ilisteners); i < _len; i++ {
+		listeners = append(listeners, ilisteners[i].Listener)
 	}
 	return
 }
@@ -58,13 +57,13 @@ func (m eventManager) Listeners(event string) (listeners map[string]Listener) {
 func (m eventManager) Emit(event string, data ...interface{}) {
 	if m.matchEvent == nil {
 		for _, listener := range m.events[event] {
-			listener.EventCallback(event, data...)
+			listener.Callback(event, data...)
 		}
 	} else {
 		for matchedEvent, listeners := range m.events {
 			if m.matchEvent(matchedEvent, event) {
 				for _, listener := range listeners {
-					listener.EventCallback(event, data...)
+					listener.Callback(event, data...)
 				}
 			}
 		}
@@ -94,10 +93,10 @@ func (m eventManager) EmitAsync(event string, data ...interface{}) Result {
 	return wg
 }
 
-func (m eventManager) emitAsync(wg *sync.WaitGroup, listener namedListener,
+func (m eventManager) emitAsync(wg *sync.WaitGroup, listener Listener,
 	event string, data ...interface{}) {
-	defer m.asyncDone(wg, event, listener.Name)
-	listener.EventCallback(event, data...)
+	defer m.asyncDone(wg, event, listener.Name())
+	listener.Callback(event, data...)
 }
 
 func (m eventManager) asyncDone(wg *sync.WaitGroup, evt string, ln string) {
@@ -111,7 +110,7 @@ type emitter struct {
 	matchEvent func(matchedEvent, emittedEvent string) bool
 
 	lock sync.RWMutex
-	evtm map[string]map[string]namedListener
+	evtm map[string]map[string]indexListener
 	evtv atomic.Value
 	eidx uint64
 }
@@ -123,7 +122,7 @@ func New() Emitter { return NewCommon(nil) }
 func NewCommon(matchEvent func(matchedEvent, emittedEvent string) bool) Emitter {
 	e := &emitter{
 		matchEvent: matchEvent,
-		evtm:       make(map[string]map[string]namedListener, 16),
+		evtm:       make(map[string]map[string]indexListener, 16),
 	}
 
 	e.storeEvents(eventManager{})
@@ -134,9 +133,9 @@ func (e *emitter) loadEvents() eventManager   { return e.evtv.Load().(eventManag
 func (e *emitter) storeEvents(m eventManager) { e.evtv.Store(m) }
 
 func (e *emitter) updateEvents() {
-	events := make(map[string]namedListeners, len(e.evtm)*2)
+	events := make(map[string]indexListeners, len(e.evtm)*2)
 	for event, listeners := range e.evtm {
-		lns := make(namedListeners, 0, len(listeners))
+		lns := make(indexListeners, 0, len(listeners))
 		for _, listener := range listeners {
 			lns = append(lns, listener)
 		}
@@ -151,7 +150,7 @@ func (e *emitter) Events() []string {
 	return e.loadEvents().Events()
 }
 
-func (e *emitter) Listeners(event string) map[string]Listener {
+func (e *emitter) Listeners(event string) []Listener {
 	return e.loadEvents().Listeners(event)
 }
 
@@ -163,26 +162,24 @@ func (e *emitter) EmitAsync(event string, data ...interface{}) Result {
 	return e.loadEvents().EmitAsync(event, data...)
 }
 
-func (e *emitter) On(event, listenerName string, listener Listener) {
+func (e *emitter) On(event string, listener Listener) {
 	if event == "" {
 		panic("the event is empty")
-	} else if listenerName == "" {
-		panic("the listener name is empty")
 	} else if listener == nil {
 		panic("the listener is nil")
 	}
 
-	nlistener := namedListener{
-		Name:     listenerName,
+	lnname := listener.Name()
+	ilistener := indexListener{
 		Index:    atomic.AddUint64(&e.eidx, 1),
 		Listener: listener,
 	}
 
 	e.lock.Lock()
 	if listeners, ok := e.evtm[event]; !ok {
-		e.evtm[event] = map[string]namedListener{listenerName: nlistener}
+		e.evtm[event] = map[string]indexListener{lnname: ilistener}
 	} else {
-		listeners[listenerName] = nlistener
+		listeners[lnname] = ilistener
 	}
 	e.updateEvents()
 	e.lock.Unlock()
@@ -212,24 +209,23 @@ func (e *emitter) Off(event, listenerName string) {
 	e.lock.Unlock()
 }
 
-func (e *emitter) Once(event, listenerName string, listener Listener) {
-	e.On(event, listenerName, newOnceListener(e, listenerName, listener))
+func (e *emitter) Once(event string, listener Listener) {
+	e.On(event, newOnceListener(e, listener))
 }
 
-func newOnceListener(emitter *emitter, lnname string, ln Listener) Listener {
-	return &onceListener{emitter: emitter, lnname: lnname, listener: ln}
+func newOnceListener(emitter *emitter, ln Listener) Listener {
+	return &onceListener{emitter: emitter, Listener: ln}
 }
 
-func (l *onceListener) EventCallback(event string, data ...interface{}) {
+func (l *onceListener) Callback(event string, data ...interface{}) {
 	if atomic.CompareAndSwapInt32(&l.emitted, 0, 1) {
-		l.emitter.Off(event, l.lnname)
-		l.listener.EventCallback(event, data...)
+		l.emitter.Off(event, l.Name())
+		l.Listener.Callback(event, data...)
 	}
 }
 
 type onceListener struct {
-	emitter  *emitter
-	emitted  int32
-	lnname   string
-	listener Listener
+	emitter *emitter
+	emitted int32
+	Listener
 }

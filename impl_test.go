@@ -21,22 +21,22 @@ import (
 )
 
 func ExampleNew() {
-	newListener := func(listenerName string) ListenerFunc {
+	newCallbackFunc := func(listenerName string) Callback {
 		return func(event string, data ...interface{}) {
 			fmt.Printf("listener=%s, event=%s, data=%v\n", listenerName, event, data)
 		}
 	}
 
-	ln1 := newListener("ln1")
-	ln2 := newListener("ln2")
-	ln3 := newListener("ln3")
+	newListener := func(listenerName string) Listener {
+		return NewListener(listenerName, newCallbackFunc(listenerName))
+	}
 
-	On("e1", "ln1", ln1)
-	On("e1", "ln2", ln2)
-	OnFunc("e2", "ln2", ln2)
-	OnFunc("e2", "ln3", ln3)
-	OnFunc("e3", "ln3", ln3)
-	OnceFunc("e3", "ln1", ln1) // Only trigger once
+	On("e1", newListener("ln1"))
+	On("e1", newListener("ln2"))
+	OnFunc("e2", "ln2", newCallbackFunc("ln2"))
+	OnFunc("e2", "ln3", newCallbackFunc("ln3"))
+	OnFunc("e3", "ln3", newCallbackFunc("ln3"))
+	OnceFunc("e3", "ln1", newCallbackFunc("ln1")) // Only trigger once
 
 	events := Events()
 	sort.Strings(events)
@@ -116,17 +116,17 @@ func ExampleNewCommon() {
 		return matchedEvent == emittedEvent
 	}
 
-	newListener := func(listenerName string) ListenerFunc {
-		return func(event string, data ...interface{}) {
+	newListener := func(listenerName string) Listener {
+		return NewListener(listenerName, func(event string, data ...interface{}) {
 			fmt.Printf("listener=%s, event=%s, data=%v\n", listenerName, event, data)
-		}
+		})
 	}
 
 	emitter := NewCommon(matchEvent)
-	emitter.On("*", "ln1", newListener("ln1"))
-	emitter.On("*.suffix", "ln2", newListener("ln2"))
-	emitter.On("prefix.*", "ln3", newListener("ln3"))
-	emitter.On("exact", "ln4", newListener("ln4"))
+	emitter.On("*", newListener("ln1"))
+	emitter.On("*.suffix", newListener("ln2"))
+	emitter.On("prefix.*", newListener("ln3"))
+	emitter.On("exact", newListener("ln4"))
 
 	events := emitter.Events()
 	sort.Strings(events)

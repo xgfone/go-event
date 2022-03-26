@@ -27,43 +27,13 @@ func BenchmarkNewCommon(b *testing.B) {
 }
 
 func benchmarkEmitter(b *testing.B, emitter Emitter) {
-	emitter.On("event", "ln", ListenerFunc(func(string, ...interface{}) {}))
+	emitter.On("event", NewListener("ln", func(string, ...interface{}) {}))
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	b.RunParallel(func(p *testing.PB) {
 		for p.Next() {
 			emitter.Emit("event")
-		}
-	})
-}
-
-func BenchmarkA1(b *testing.B) {
-	ss := []string{"a", "b", "c", "d"}
-	f := func(i int, s string) { ss[i] = s }
-
-	b.ReportAllocs()
-	b.ResetTimer()
-	b.RunParallel(func(p *testing.PB) {
-		for p.Next() {
-			for i, s := range ss {
-				f(i, s)
-			}
-		}
-	})
-}
-
-func BenchmarkA2(b *testing.B) {
-	ss := []string{"a", "b", "c", "d"}
-	f := func(i int, s string) { ss[i] = s }
-
-	b.ReportAllocs()
-	b.ResetTimer()
-	b.RunParallel(func(p *testing.PB) {
-		for p.Next() {
-			for i, _len := 0, len(ss); i < _len; i++ {
-				f(i, ss[i])
-			}
 		}
 	})
 }

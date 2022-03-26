@@ -21,15 +21,15 @@ type Emitter interface {
 	Events() []string
 
 	// Listeners returns all the listeners registered for the event.
-	Listeners(event string) map[string]Listener
+	Listeners(event string) []Listener
 
-	// On registers the listeners with name for the event.
+	// On registers the listeners for the event.
 	//
-	// If the listenerName has been registered, override it.
-	On(event, listenerName string, listener Listener)
+	// If the listener has been registered by the name, override it.
+	On(event string, listener Listener)
 
 	// Once is the same as On, but the listener are triggered only once then removed.
-	Once(event, listenerName string, listener Listener)
+	Once(event string, listener Listener)
 
 	// Off removes the listener named listenerName from the event.
 	//
@@ -54,13 +54,27 @@ type Result interface {
 
 // Listener is used to listen the event and called when the event is emitted.
 type Listener interface {
-	EventCallback(event string, data ...interface{})
+	Callback(event string, data ...interface{})
+	Name() string
 }
 
-// ListenerFunc is a listener function.
-type ListenerFunc func(event string, data ...interface{})
+// Callback is an event function.
+type Callback func(event string, data ...interface{})
 
-// EventCallback implements the interface Listener.
-func (l ListenerFunc) EventCallback(event string, data ...interface{}) {
-	l(event, data...)
+// NewListener returns a new listener with the name and callback.
+func NewListener(name string, callback Callback) Listener {
+	if name == "" {
+		panic("the listener name is empty")
+	} else if callback == nil {
+		panic("the listener callback is nil")
+	}
+	return listener{name: name, evcb: callback}
 }
+
+type listener struct {
+	name string
+	evcb Callback
+}
+
+func (l listener) Name() string                        { return l.name }
+func (l listener) Callback(e string, d ...interface{}) { l.evcb(e, d...) }
