@@ -58,6 +58,19 @@ type Listener interface {
 	Name() string
 }
 
+// ListenerCallbackWrapper is a listener that forward the event callback
+// to the wrapped callback function.
+type ListenerCallbackWrapper struct {
+	WrappedCallback func(ln Listener, event string, data ...interface{})
+	Listener
+}
+
+// Callback implements the interface Listener, which forwards the calling
+// to the wrapped callback function with the listener and the emitted event.
+func (l ListenerCallbackWrapper) Callback(event string, data ...interface{}) {
+	l.WrappedCallback(l.Listener, event, data...)
+}
+
 // Callback is an event function.
 type Callback func(event string, data ...interface{})
 
