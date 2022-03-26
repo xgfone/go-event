@@ -33,7 +33,83 @@ func (a namedListeners) Len() int           { return len(a) }
 func (a namedListeners) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a namedListeners) Less(i, j int) bool { return a[i].Index < a[j].Index }
 
+type eventManager struct {
+	matchEvent func(matchedEvent, emittedEvent string) bool
+	events     map[string]namedListeners
+}
+
+func (m eventManager) Events() (events []string) {
+	events = make([]string, 0, len(m.events))
+	for event := range m.events {
+		events = append(events, event)
+	}
+	return
+}
+
+func (m eventManager) Listeners(event string) (listeners map[string]Listener) {
+	nlisteners := m.events[event]
+	listeners = make(map[string]Listener, len(nlisteners))
+	for i, _len := 0, len(nlisteners); i < _len; i++ {
+		listeners[nlisteners[i].Name] = nlisteners[i].Listener
+	}
+	return
+}
+
+func (m eventManager) Emit(event string, data ...interface{}) {
+	if m.matchEvent == nil {
+		for _, listener := range m.events[event] {
+			listener.EventCallback(event, data...)
+		}
+	} else {
+		for matchedEvent, listeners := range m.events {
+			if m.matchEvent(matchedEvent, event) {
+				for _, listener := range listeners {
+					listener.EventCallback(event, data...)
+				}
+			}
+		}
+	}
+}
+
+func (m eventManager) EmitAsync(event string, data ...interface{}) Result {
+	wg := new(sync.WaitGroup)
+
+	if m.matchEvent == nil {
+		listeners := m.events[event]
+		wg.Add(len(listeners))
+		for _, listener := range listeners {
+			go m.emitAsync(wg, listener, event, data...)
+		}
+	} else {
+		for matchedEvent, listeners := range m.events {
+			if m.matchEvent(matchedEvent, event) {
+				wg.Add(len(listeners))
+				for _, listener := range listeners {
+					go m.emitAsync(wg, listener, event, data...)
+				}
+			}
+		}
+	}
+
+	return wg
+}
+
+func (m eventManager) emitAsync(wg *sync.WaitGroup, listener namedListener,
+	event string, data ...interface{}) {
+	defer m.asyncDone(wg, event, listener.Name)
+	listener.EventCallback(event, data...)
+}
+
+func (m eventManager) asyncDone(wg *sync.WaitGroup, evt string, ln string) {
+	wg.Done()
+	if err := recover(); err != nil {
+		log.Printf("EventEmitter: listener '%s' panics on event '%s'", evt, ln)
+	}
+}
+
 type emitter struct {
+	matchEvent func(matchedEvent, emittedEvent string) bool
+
 	lock sync.RWMutex
 	evtm map[string]map[string]namedListener
 	evtv atomic.Value
@@ -41,76 +117,50 @@ type emitter struct {
 }
 
 // New returns a new thread-safe event emitter.
-func New() Emitter {
-	e := &emitter{evtm: make(map[string]map[string]namedListener, 16)}
-	e.storeEvents(nil)
+func New() Emitter { return NewCommon(nil) }
+
+// NewCommon returns a new thread-safe common event emitter.
+func NewCommon(matchEvent func(matchedEvent, emittedEvent string) bool) Emitter {
+	e := &emitter{
+		matchEvent: matchEvent,
+		evtm:       make(map[string]map[string]namedListener, 16),
+	}
+
+	e.storeEvents(eventManager{})
 	return e
 }
 
-func (e *emitter) Emit(event string, data ...interface{}) {
-	evts := e.evtv.Load().(map[string]namedListeners)
-	for _, listener := range evts[event] {
-		listener.EventCallback(event, data...)
-	}
-}
-
-func (e *emitter) EmitAsync(event string, data ...interface{}) Result {
-	listeners := e.evtv.Load().(map[string]namedListeners)[event]
-
-	wg := new(sync.WaitGroup)
-	wg.Add(len(listeners))
-	for _, listener := range listeners {
-		go e.emitAsync(wg, listener, event, data...)
-	}
-	return wg
-}
-
-func (e *emitter) emitAsync(wg *sync.WaitGroup, listener namedListener,
-	event string, data ...interface{}) {
-	defer e.asyncDone(wg, event, listener.Name)
-	listener.EventCallback(event, data...)
-}
-
-func (e *emitter) asyncDone(wg *sync.WaitGroup, evt string, ln string) {
-	wg.Done()
-	if err := recover(); err != nil {
-		log.Printf("EventEmitter: listener '%s' panics on event '%s'", evt, ln)
-	}
-}
-
-func (e *emitter) Events() []string {
-	evts := e.evtv.Load().(map[string]namedListeners)
-	events := make([]string, 0, len(evts))
-	for event := range evts {
-		events = append(events, event)
-	}
-	return events
-}
-
-func (e *emitter) Listeners(event string) map[string]Listener {
-	lns := e.evtv.Load().(map[string]namedListeners)[event]
-	listeners := make(map[string]Listener, len(lns))
-	for _, listener := range lns {
-		listeners[listener.Name] = listener.Listener
-	}
-	return listeners
-}
-
-func (e *emitter) storeEvents(evts map[string]namedListeners) {
-	e.evtv.Store(evts)
-}
+func (e *emitter) loadEvents() eventManager   { return e.evtv.Load().(eventManager) }
+func (e *emitter) storeEvents(m eventManager) { e.evtv.Store(m) }
 
 func (e *emitter) updateEvents() {
-	evts := make(map[string]namedListeners, len(e.evtm)*2)
+	events := make(map[string]namedListeners, len(e.evtm)*2)
 	for event, listeners := range e.evtm {
 		lns := make(namedListeners, 0, len(listeners))
 		for _, listener := range listeners {
 			lns = append(lns, listener)
 		}
 		sort.Stable(lns)
-		evts[event] = lns
+		events[event] = lns
 	}
-	e.storeEvents(evts)
+
+	e.storeEvents(eventManager{matchEvent: e.matchEvent, events: events})
+}
+
+func (e *emitter) Events() []string {
+	return e.loadEvents().Events()
+}
+
+func (e *emitter) Listeners(event string) map[string]Listener {
+	return e.loadEvents().Listeners(event)
+}
+
+func (e *emitter) Emit(event string, data ...interface{}) {
+	e.loadEvents().Emit(event, data...)
+}
+
+func (e *emitter) EmitAsync(event string, data ...interface{}) Result {
+	return e.loadEvents().EmitAsync(event, data...)
 }
 
 func (e *emitter) On(event, listenerName string, listener Listener) {
@@ -144,7 +194,7 @@ func (e *emitter) Off(event, listenerName string) {
 		for event := range e.evtm {
 			delete(e.evtm, event)
 		}
-		e.storeEvents(nil)
+		e.storeEvents(eventManager{})
 	} else if listenerName == "" {
 		if _, ok := e.evtm[event]; ok {
 			delete(e.evtm, event)

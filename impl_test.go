@@ -17,9 +17,10 @@ package event
 import (
 	"fmt"
 	"sort"
+	"strings"
 )
 
-func ExampleEmitter() {
+func ExampleNew() {
 	newListener := func(listenerName string) ListenerFunc {
 		return func(event string, data ...interface{}) {
 			fmt.Printf("listener=%s, event=%s, data=%v\n", listenerName, event, data)
@@ -90,4 +91,71 @@ func ExampleEmitter() {
 	// listener=ln3, event=e2, data=[data8]
 	// Events: [e1]
 	// Events: []
+}
+
+func ExampleNewCommon() {
+	matchEvent := func(matchedEvent, emittedEvent string) bool {
+		// Full Match
+		if matchedEvent == "*" {
+			return true
+		}
+
+		// Suffix Match
+		if strings.HasPrefix(matchedEvent, "*") &&
+			strings.HasSuffix(emittedEvent, matchedEvent[1:]) {
+			return true
+		}
+
+		// Prefix Match
+		if strings.HasSuffix(matchedEvent, "*") &&
+			strings.HasPrefix(emittedEvent, matchedEvent[:len(matchedEvent)-1]) {
+			return true
+		}
+
+		// Exact Match
+		return matchedEvent == emittedEvent
+	}
+
+	newListener := func(listenerName string) ListenerFunc {
+		return func(event string, data ...interface{}) {
+			fmt.Printf("listener=%s, event=%s, data=%v\n", listenerName, event, data)
+		}
+	}
+
+	emitter := NewCommon(matchEvent)
+	emitter.On("*", "ln1", newListener("ln1"))
+	emitter.On("*.suffix", "ln2", newListener("ln2"))
+	emitter.On("prefix.*", "ln3", newListener("ln3"))
+	emitter.On("exact", "ln4", newListener("ln4"))
+
+	events := emitter.Events()
+	sort.Strings(events)
+	fmt.Printf("Events: %v\n", events)
+
+	fmt.Println("Emit the event sync")
+	emitter.Emit("e1.suffix", "data1")
+	emitter.Emit("prefix.e2", "data2")
+	emitter.Emit("exact", "data3")
+
+	fmt.Println("Emit the event async")
+	emitter.EmitAsync("e1.suffix", "data4").Wait()
+	emitter.EmitAsync("prefix.e2", "data5").Wait()
+	emitter.EmitAsync("exact", "data6").Wait()
+
+	// Unordered Output:
+	// Events: [* *.suffix exact prefix.*]
+	// Emit the event sync
+	// listener=ln1, event=e1.suffix, data=[data1]
+	// listener=ln2, event=e1.suffix, data=[data1]
+	// listener=ln1, event=prefix.e2, data=[data2]
+	// listener=ln3, event=prefix.e2, data=[data2]
+	// listener=ln1, event=exact, data=[data3]
+	// listener=ln4, event=exact, data=[data3]
+	// Emit the event async
+	// listener=ln1, event=e1.suffix, data=[data4]
+	// listener=ln2, event=e1.suffix, data=[data4]
+	// listener=ln1, event=prefix.e2, data=[data5]
+	// listener=ln3, event=prefix.e2, data=[data5]
+	// listener=ln1, event=exact, data=[data6]
+	// listener=ln4, event=exact, data=[data6]
 }
