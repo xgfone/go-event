@@ -170,6 +170,10 @@ func (e *emitter) On(event string, listener Listener) {
 	}
 
 	lnname := listener.Name()
+	if lnname == "" {
+		panic("the listener name is empty")
+	}
+
 	ilistener := indexListener{
 		Index:    atomic.AddUint64(&e.eidx, 1),
 		Listener: listener,
